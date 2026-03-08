@@ -71,10 +71,48 @@ text3d(x = .5,y =  0.9660254,z = 0,texts = "Other",col="black",cex=1.4)
 
 ######Make the plot in plotly#####
 
-####Figure A
+####Build tetrahedron side positions
+
+#1 and 2
+L1_2<-data.frame(x=as.vector(c(1,0.5 )),
+                 y=as.vector(c(0,0.2886751)),
+                 z=as.vector(c(0,0.8164966)))
+
+#1 and 3
+L3_1<-data.frame(x=as.vector(c(0,1 )),
+                 y=as.vector(c(0,0)),
+                 z=as.vector(c(0,0)))
+
+#1 and 4
+L4_1<-data.frame(x=as.vector(c(0.5,1 )),
+                 y=as.vector(c(0.8660254,0)),
+                 z=as.vector(c(0,0)))
+
+#2 and 3
+
+L3_2<-data.frame(x=as.vector(c(0,0.5 )),
+                 y=as.vector(c(0,0.2886751)),
+                 z=as.vector(c(0,0.8164966)))
+
+#2 and 4
+
+L4_2<-data.frame(x=as.vector(c(0.5,0.5 )),
+                 y=as.vector(c(0.8660254,0.2886751)),
+                 z=as.vector(c(0,0.8164966)))
+
+#3 and 4
+
+L3_4<-data.frame(x=as.vector(c(0,.5)),
+                 y=as.vector(c(0,0.8660254)),
+                 z=as.vector(c(0,0)))
 
 
+
+
+#Set data frame for plotly
 xyzdf<-data.frame(xyz/100,group="geometry 1")
+
+#Build empty tetrahedron 
 figA<-plot_ly()%>%
   
   add_trace(data=xyzdf,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="markers",color = stylecols,colors=c("black","black","black"),alpha=0.3,scene = "scene2")%>% 
@@ -93,12 +131,13 @@ figA<-plot_ly()%>%
 
 
 
-
+###Build labels
 fig2A<-figA%>%layout(showlegend=F)
 #fig2A
 
 vertex<-data.frame(x=as.vector(c(1,.5,0,.5)),y=as.vector(c(-.02,0.2986751,-.02,0.9660254)),z=as.vector(c(-.10,0.8164966,-.10,-.10)),label=as.vector(c("Lecture","Individual","Group","Other")))
 
+###Add points
 fig3A<-fig2A%>%add_trace(data=vertex,x=~x,y=~y,z=~z,mode="text",text=~label,type="scatter3d",size=I(16),scene = "scene2")
 
 label_loc<-data.frame(x=as.vector(c(0.1)),y=as.vector(c(-.02)),z=as.vector(c(.85)),label=as.vector(c("A")))
