@@ -1,0 +1,421 @@
+---
+title: "Let triangles solve your multinomial problems"
+author: 
+  name: "Liam O'Connor Mueller, Ph.D."
+  affiliation: 
+    name: UC San Diego    
+format: 
+  revealjs:
+    theme: serif
+    code-fold: true
+    code-tools: true
+    code-summary: "Show the code"
+editor: visual
+include-in-header:
+  - text: |
+      <style>
+      #title-slide .title {
+        font-size: 2em;
+      }
+      
+      </style>
+embed-resources: true
+---
+
+```{r,message=FALSE,warning=FALSE}
+knitr::opts_chunk$set(
+    out.width = "80%", # enough room to breath
+    fig.width = 10,# reasonable size
+    fig.height = 10,
+    fig.align = "center" # Pesky plotly scroll bars...
+)
+
+library(tidyverse)
+library(FactoMineR)
+library(factoextra)
+library(klaR)
+library(plotly)
+library(gt)
+library(Ternary)
+```
+
+## Let's start small; we know how to visualize binomial data {.smaller}
+
+::::: columns
+::: {.column width="30%"}
+```{r,echo=TRUE}
+Success<-c(.3, .5, .4, .3, .6, .6, .2, .5, .4, .4, .4, .3)
+
+Failure<-1-Success
+Group<-c("B","A","B","B","A","A","B","A","B","B","A","B" )
+Example_Binom<-data.frame(Success,Failure,Group)
+gt(head(Example_Binom))
+
+```
+:::
+
+::: {.column width="70%"}
+```{r,echo=TRUE}
+#| layout-ncol: 2
+Example_Binom|>ggplot(aes(x = Failure,y = Success)) + geom_point(color='black', shape=21, size=10, aes(fill=Group)) + 
+  scale_fill_manual(values=c('#88CCEE', '#CC6677'))+theme_bw()+theme(axis.text=element_text(size=20),
+        axis.title=element_text(size=20,face="bold"))+
+  theme(legend.position="none")
+
+Example_Binom|>ggplot(aes(x = Group,y = Success)) + geom_dotplot(color='black',binaxis = "y", stackdir = "center", aes(fill=Group),dotsize = 2.4) + 
+  scale_fill_manual(values=c('#88CCEE', '#CC6677'))+theme_bw()+theme(axis.text=element_text(size=20),
+        axis.title=element_text(size=20,face="bold"))+
+  theme(legend.position="none")
+```
+:::
+:::::
+
+## Multinomial data are common: Cell cycle {.smaller}
+
+![](Cell_cycle.png){width="45%" fig-alt="A circle broken up into 4 sections showing the steps in the cell division cycle: G1,S,G2, and M" fig-align="center"}
+
+::: aside
+Cell Cycle: Richard Wheeler 2006
+:::
+
+## Multinomial data are common: Immune response {.smaller}
+
+![](WhiteBloodCells.png){fig-alt="Artistic rendering of different white blood cells including Monocyte, Eodinophil, Basophil, Lymphocytes, and Neutrophil" fig-align="center" width="65%"}
+
+::: aside
+Blausen.com staff (2014). "Medical gallery of Blausen Medical 2014". WikiJournal of Medicine
+:::
+
+## Multinomial data are common: How did you get to the conference? {.smaller}
+
+![](Transit.png){fig-alt="Black and white icons of transportation modes including automobile, airplane, train" fig-align="center"}
+
+::: aside
+Eskak - The Noun Project
+:::
+
+## But once we get to three possible outcomes, everyone gives up! {.smaller}
+
+::::: columns
+::: {.column width="30%"}
+```{r,echo=TRUE}
+knitr::opts_chunk$set(
+    out.width = "80%", # enough room to breath
+    fig.width = 10,# reasonable size
+    fig.height = 8,
+    fig.align = "center" # Pesky plotly scroll bars...
+)
+B_cell<-c(23.8,27.5,26.1,52.3,63,65.9)
+T_cell<-c(60.3,60.7,60,40.7,30.2,27.8)
+Macrophage<-c(15.9,11.8,13.9,7,6.8,6.3)
+Condition<-c("Control","Control","Control","KO","KO","KO")
+Cell_example<-data.frame(B_cell,T_cell,Macrophage,Condition)
+gt(Cell_example)
+```
+:::
+
+::: {.column width="70%"}
+```{r,echo=TRUE}
+knitr::opts_chunk$set(
+    out.width = "80%", # enough room to breath
+    fig.width = 10,# reasonable size
+    fig.height = 8,
+    fig.align = "center" # Pesky plotly scroll bars...
+)
+Long_Cell_example<-pivot_longer(Cell_example,cols = 1:3,names_to = "Cell_type",values_to = "Proportion")
+Long_Cell_example|>ggplot(mapping = aes(x=Cell_type,y =Proportion ,fill = Condition))+geom_point(shape=21, size = 8,position = position_jitter(w = 0.3, h = 0))+scale_fill_manual(values=c('#88CCEE', '#CC6677'))+theme_bw()+theme(axis.text=element_text(size=20),
+        axis.title=element_text(size=20,face="bold"))+
+  theme(legend.position="none")
+
+```
+:::
+:::::
+
+## However, we just need to remember the binomial plot! {.smaller}
+
+::::: columns
+::: {.column width="30%"}
+```{r,echo=TRUE}
+B_cell<-c(23.8,27.5,26.1,52.3,63,65.9)
+T_cell<-c(60.3,60.7,60,40.7,30.2,27.8)
+Macrophage<-c(15.9,11.8,13.9,7,6.8,6.3)
+Condition<-c("Control","Control","Control","KO","KO","KO")
+Cell_example<-data.frame(B_cell,T_cell,Macrophage,Condition)
+gt(Cell_example)
+```
+:::
+
+::: {.column width="70%"}
+```{r,echo=TRUE}
+knitr::opts_chunk$set(
+    out.width = "90%",
+    fig.width = 7,
+    fig.height = 7,
+    fig.align = "center"
+)
+axis <- function(title) {
+  list(
+    title = title,
+    titlefont = list(
+      size = 20
+    ),
+    tickfont = list(
+      size = 15
+    ),
+    tickcolor = 'rgba(0,0,0,0)',
+    ticklen = 5
+  )
+}
+
+fig <- Cell_example |> plot_ly()
+fig2A <- fig |> add_trace(
+    type = 'scatterternary',
+    mode = 'markers',
+    a = ~B_cell,
+    b = ~T_cell,
+    c = ~Macrophage,
+    text = ~Condition,
+    marker = list( 
+      symbol = 100,
+      color = c('#88CCEE','#88CCEE','#88CCEE', '#CC6677','#CC6677','#CC6677'),
+      size = 14,
+      line = list('width' = 2)
+    )
+  )
+fig3A <- fig2A |> layout(
+    title = "",
+    ternary = list(
+      sum = 100,
+      aaxis = axis('B cells'),
+      baxis = axis('T cells'),
+      caxis = axis('Macrophage')
+    )
+  )
+m<-list(
+  l = 80,
+  r = 80,
+  b = 80,
+  t = 80
+)
+fig4A<-fig3A|>layout(
+         margin = m)
+
+```
+
+![](Ternary2.png){fig-alt="Triangle plot with each axis marked from 0 to 100. Six circles are in the triangle, clustered by color, three red, and three blue. At the top vertex, a label reads: B cells, on the left: T cells, on the right: Macrophage" fig-align="center"}
+:::
+:::::
+
+## Four columns of data in 3D space {.smaller}
+
+::::: columns
+::: {.column width="35%"}
+```{r,warning=FALSE,message=FALSE,echo=T}
+knitr::opts_chunk$set(
+    out.width = "65%", # enough room to breath
+    fig.width = 5,# reasonable size
+    fig.height = 5,
+    fig.align = "center" # Pesky plotly scroll bars...
+)
+Example_data<-read.csv(file = "Student_Data.csv")
+gt(Example_data[c(1,2,3,4210,4211,4212),])
+```
+
+[See the paper here!](https://www.lifescied.org/doi/10.1187/cbe.25-08-0185)
+:::
+
+::: {.column width="65%"}
+```{r,echo=TRUE}
+
+#library(tidyverse)
+#library(FactoMineR)
+#library(factoextra)
+#library(klaR)
+#library(plotly)
+time<-Example_data[,2:5]#Call out the columns of data 
+style<-Example_data[,1]
+
+#Build a vector for colors
+stylecols<-NA
+
+for(i in 1:length(style)){
+  if(style[i]=="In-person"){
+    stylecols[i]<-"#88CCEE"
+  }
+  if(style[i]=="Remote"){
+    stylecols[i]<-"#CC6677"
+}}
+
+
+SABDAT<-as.matrix(time)#The barycenter coordinate transformation wants a matrix object
+xyz<-quadtrafo(e=SABDAT[,1],f = SABDAT[,4],g = SABDAT[,2],h = SABDAT[,3])#convert the 4 dimension data into the 3d pyramid coordinates x y and z axis.
+Falsecords<-quadtrafo(e=c(1,0,0,0), f = c(0,0,0,1), g = c(0,1,0,0),h = c(0,0,1,0))#convert the maximum 4 dimension into the 3d pyramid coordinates so we know where the corners are in 3D space.
+
+###Build the sides of the pyramid
+#3 and 4
+
+L3_4<-data.frame(x=as.vector(c(0,.5)),
+           y=as.vector(c(0,0.8660254)),
+           z=as.vector(c(0,0)))
+#L3_4<-data.frame(L3_4,group="geometry 2")
+
+
+#3 and 1
+L3_1<-data.frame(x=as.vector(c(0,1 )),
+               y=as.vector(c(0,0)),
+               z=as.vector(c(0,0)))
+
+#3 and 2
+
+L3_2<-data.frame(x=as.vector(c(0,0.5 )),
+                 y=as.vector(c(0,0.2886751)),
+                 z=as.vector(c(0,0.8164966)))
+
+#4 and 1
+L4_1<-data.frame(x=as.vector(c(0.5,1 )),
+                 y=as.vector(c(0.8660254,0)),
+                 z=as.vector(c(0,0)))
+
+#4 and 2
+
+L4_2<-data.frame(x=as.vector(c(0.5,0.5 )),
+                 y=as.vector(c(0.8660254,0.2886751)),
+                 z=as.vector(c(0,0.8164966)))
+
+#1 and 2
+L1_2<-data.frame(x=as.vector(c(1,0.5 )),
+                 y=as.vector(c(0,0.2886751)),
+                 z=as.vector(c(0,0.8164966)))
+xyzdf<-data.frame(xyz/100,group="geometry 1")
+figC<-plot_ly()%>%add_trace(data=xyzdf,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="markers",color = stylecols,colors=c("#88CCEE","#CC6677","black"),alpha=0.9,scene = "scene4")%>% 
+  
+  add_trace(data = L3_4,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="lines",color="black",colors="black",size=I(10),scene = "scene4")%>%
+  
+  add_trace(data = L1_2,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="lines",color="black",colors="black",size=I(10),scene = "scene4")%>%
+  
+  add_trace(data = L3_1,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="lines",color="black",colors="black",size=I(10),scene = "scene4")%>%
+  
+  add_trace(data = L4_1,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="lines",color="black",colors="black",size=I(10),scene = "scene4")%>%
+  
+  add_trace(data = L4_2,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="lines",color="black",colors="black",size=I(10),scene = "scene4")%>%
+  
+  add_trace(data = L3_2,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="lines",color="black",colors="black",size=I(10),scene = "scene4")
+
+fig2C<-figC%>%layout(showlegend=F)
+
+vertex<-data.frame(x=as.vector(c(1,.5,0,.5)),y=as.vector(c(-.02,0.2986751,-.02,0.9660254)),z=as.vector(c(-.10,0.8164966,-.10,-.10)),label=as.vector(c("Lecture","Individual","Group","Other")))
+
+fig3C<-fig2C%>%add_trace(data=vertex,x=~x,y=~y,z=~z,mode="text",text=~label,type="scatter3d",size=I(16),scene = "scene4")
+
+label_loc<-data.frame(x=as.vector(c(0.1)),y=as.vector(c(-.02)),z=as.vector(c(.85)),label=as.vector(c("Student Responses")))
+fig4C<-fig3C%>%add_trace(data=label_loc,x=~x,y=~y,z=~z,mode="text",text=~label,type="scatter3d",size=I(16),scene = "scene4")
+
+figCsolo<-fig4C%>%layout(title="",scene4=list( xaxis = list(title = '', showgrid = FALSE, showticklabels = FALSE, zerolinecolor = '#ffff'),yaxis = list(title = '', showgrid = FALSE, showticklabels = FALSE, zerolinecolor = '#ffff'),zaxis = list(title = '', showgrid = FALSE, showticklabels = FALSE, zerolinecolor = '#ffff')))
+figCsolo
+
+
+
+
+```
+:::
+:::::
+
+## Re-sampling centroid distances {.smaller}
+
+::::: columns
+::: {.column width="35%"}
+```{r,echo=TRUE}
+AskingQcords<-data.frame(xyz,style)
+AverageIP<-as.vector(colMeans(na.omit(AskingQcords[style=="In-person",1:3])))
+AverageR<-as.vector(colMeans(na.omit(AskingQcords[style=="Remote",1:3])))
+AverageTotal<-as.vector(colMeans(na.omit(AskingQcords[,1:3])))
+
+distasnces<-AverageIP-AverageR
+squares<-distasnces^2
+sums<-sum(squares)
+Dist<-sqrt(sums)
+#Is that Distance bigger than the Distance  by chance alone?
+  
+Observed_bigger_than_random<-NA
+  for(i in 1:10000){
+    randomstyle<-sample(style,length(style))
+    tempIP<-colMeans(na.omit(AskingQcords[randomstyle=="In-person",1:3]))
+    tempR<-colMeans(na.omit(AskingQcords[randomstyle=="Remote",1:3]))
+    tempD<-sqrt(sum((tempIP-tempR)^2))
+    Observed_bigger_than_random[i]<- Dist > tempD
+  }
+  
+pval<-(1-sum(Observed_bigger_than_random)/10000)#Still needs to be two tailed.
+Modality<-c("In-person","Remote","Delta")
+Group<-c(54.49,32.84,21.65)
+Lecture<-c(32.02,50.23,-18.21)
+Individual<-c(9.15,11.4,-2.25)
+Other<-c(4.34,5.53,-1.21)
+results<-data.frame(Modality,Group,Lecture,Individual,Other)
+tab_footnote(gt(results),footnote = "p < 0.0001")
+```
+:::
+
+::: {.column width="65%"}
+```{r,echo=TRUE}
+### Plot just the centroids
+
+
+
+xyzdf<-data.frame(xyz/100,group="geometry 1")
+AverageR1<-data.frame(x=as.vector(AverageR[1]/100),y=as.vector(AverageR[2]/100),z=as.vector(AverageR[3]/100),label="Remote")
+AverageIP1<-data.frame(x=as.vector(AverageIP[1]/100),y=as.vector(AverageIP[2]/100),z=as.vector(AverageIP[3]/100),label="In-person")
+modality<-rbind(AverageIP1,AverageR1)
+
+figD<-plot_ly()%>%
+  
+  add_trace(data=modality,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="markers",color=~label,colors=c("black","#88CCEE","#CC6677"),size=I(900),scene = "scene4")%>% 
+  
+  add_trace(data = L3_4,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="lines",color="black",colors="black",size=I(10),scene = "scene4")%>%
+  
+  add_trace(data = L1_2,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="lines",color="black",colors="black",size=I(10),scene = "scene4")%>%
+  
+  add_trace(data = L3_1,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="lines",color="black",colors="black",size=I(10),scene = "scene4")%>%
+  
+  add_trace(data = L4_1,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="lines",color="black",colors="black",size=I(10),scene = "scene4")%>%
+  
+  add_trace(data = L4_2,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="lines",color="black",colors="black",size=I(10),scene = "scene4")%>%
+  
+  add_trace(data = L3_2,x= ~x,y= ~y,z= ~z,type="scatter3d",mode="lines",color="black",colors="black",size=I(10),scene = "scene4")
+
+
+
+
+fig2D<-figD%>%layout(showlegend=F)
+
+vertex<-data.frame(x=as.vector(c(1,.5,0,.5)),y=as.vector(c(-.02,0.2986751,-.02,0.9660254)),z=as.vector(c(-.10,0.8164966,-.10,-.10)),label=as.vector(c("Lecture","Individual","Group","Other")))
+
+fig3D<-fig2D%>%add_trace(data=vertex,x=~x,y=~y,z=~z,mode="text",text=~label,type="scatter3d",size=I(16),scene = "scene4")
+
+label_loc<-data.frame(x=as.vector(c(0.1)),y=as.vector(c(-.02)),z=as.vector(c(.85)),label=as.vector(c("Centroids")))
+
+fig4D<-fig3D%>%add_trace(data=label_loc,x=~x,y=~y,z=~z,mode="text",text=~label,type="scatter3d",size=I(16),scene = "scene4")
+
+figDCenters<-fig4D%>%layout(title="",scene4=list( xaxis = list(title = '', showgrid = FALSE, showticklabels = FALSE, zerolinecolor = '#ffff'),yaxis = list(title = '', showgrid = FALSE, showticklabels = FALSE, zerolinecolor = '#ffff'),zaxis = list(title = '', showgrid = FALSE, showticklabels = FALSE, zerolinecolor = '#ffff')))
+figDCenters
+```
+:::
+:::::
+
+## Thank you for your time!
+
+::::: columns
+::: {.column width="35%"}
+![](Mueller_LaJolla2.jpg){width="75%" fig-alt="A photo of the author leaning on a rock in La Jolla, California. Come visit!" fig-align="center"}
+:::
+
+::: {.column width="65%"}
+You can find this work, and all of my other public code at:
+
+[github.com/LiamOMueller/](https://github.com/LiamOMueller/)
+
+Email me!
+
+[lomueller\@ucsd.edu](mailto:lomueller@ucsd.edu){.email}
+:::
+:::::
